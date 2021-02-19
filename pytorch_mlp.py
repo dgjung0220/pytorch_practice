@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 
 from torchvision import transforms, datasets
 
@@ -80,16 +81,32 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(28 * 28, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 10)
+        self.dropout = nn.Dropout(0.5)
+        self.relu = nn.ReLU()
+
+        self.batchNorm1 = nn.BatchNorm1d(512)
+        self.batchNorm2 = nn.BatchNorm1d(256)
 
     def forward(self, x):
         x = x.view(-1, 28 * 28)
         x = self.fc1(x)
-        x = torch.sigmoid(x)
+        x = self.batchNorm1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
         x = self.fc2(x)
-        x = torch.sigmoid(x)
+        x = self.batchNorm2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
         x = self.fc3(x)
         x = F.log_softmax(x, dim=1)
+
         return x
+
+def weight_init(m):
+    if isinstance(m, nn.Linear):
+        init.kaiming_uniform_(m.weight.data)
 
 if __name__ == '__main__':
 
@@ -111,7 +128,9 @@ if __name__ == '__main__':
     # plt.show()
 
     model = Net().to(DEVICE)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+    model.apply(weight_init)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     criterion = nn.CrossEntropyLoss()
     print(model)
 
